@@ -14,7 +14,7 @@ concurrency:
 jobs:
   Prerelease:
     if: github.repository == 'IdkWhatAmIDoin/worstfish' && github.event_name == 'push' && github.ref == 'refs/heads/master'
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     needs: [Matrix]
     outputs:
       release_tag: ${{ steps.prerelease_metadata.outputs.release_tag }}
@@ -108,7 +108,7 @@ jobs:
 
   Matrix:
     name: Prepare matrices
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     outputs:
       arm_matrix: ${{ steps.set-arm-matrix.outputs.arm_matrix }}
       universal_matrix: ${{ steps.set-universal-matrix.outputs.universal_matrix }}
@@ -168,7 +168,7 @@ jobs:
   PublishPrerelease:
     if: github.repository == 'IdkWhatAmIDoin/worstfish' && needs.Prerelease.outputs.release_tag != ''
     needs: [Prerelease, DevBinaries, DevARMBinaries]
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:

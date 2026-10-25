@@ -175,9 +175,10 @@ std::string engine_version_info() {
 }
 
 std::string engine_info(bool to_uci) {
-    return engine_version_info() + (to_uci ? "\nid author " : " by ")
-         + "the Stockfish developers (see AUTHORS file)";
+    return std::string("Worstfish") + (to_uci ? "\nid author " : " by ")
+         + "the Stockfish developers and forked by Dima (see AUTHORS file)";
 }
+
 
 
 // Returns a string trying to describe the compiler we use

@@ -137,42 +137,42 @@ jobs:
     needs: [Matrix]
     uses: ./.github/workflows/universal_compilation.yml
 
-    DevBinaries:
-      if: github.repository == 'IdkWhatAmIDoin/worstfish'
-      name: Universal uploads
-      needs: [ Prerelease, Matrix, UniversalCompilation ]
-      uses: ./.github/workflows/upload_binaries.yml
-      with:
-        matrix: ${{ needs.Matrix.outputs.universal_matrix }}
-        release_tag: ${{ needs.Prerelease.outputs.release_tag }}
-        release_prerelease: true
-      permissions:
-        contents: write # For uploading release assets
-      secrets:
-        token: ${{ secrets.GITHUB_TOKEN }}
+  DevBinaries:
+    if: github.repository == 'IdkWhatAmIDoin/worstfish'
+    name: Universal uploads
+    needs: [Prerelease, Matrix, UniversalCompilation]
+    uses: ./.github/workflows/upload_binaries.yml
+    with:
+      matrix: ${{ needs.Matrix.outputs.universal_matrix }}
+      release_tag: ${{ needs.Prerelease.outputs.release_tag }}
+      release_prerelease: true
+    permissions:
+      contents: write
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
 
-    DevARMBinaries:
-      if: github.repository == 'IdkWhatAmIDoin/worstfish'
-      name: Android uploads
-      needs: [ Prerelease, Matrix, ARMCompilation ]
-      uses: ./.github/workflows/upload_binaries.yml
-      with:
-        matrix: ${{ needs.Matrix.outputs.arm_matrix }}
-        release_tag: ${{ needs.Prerelease.outputs.release_tag }}
-        release_prerelease: true
-      permissions:
-        contents: write
-      secrets:
-        token: ${{ secrets.GITHUB_TOKEN }}
+  DevARMBinaries:
+    if: github.repository == 'IdkWhatAmIDoin/worstfish'
+    name: Android uploads
+    needs: [Prerelease, Matrix, ARMCompilation]
+    uses: ./.github/workflows/upload_binaries.yml
+    with:
+      matrix: ${{ needs.Matrix.outputs.arm_matrix }}
+      release_tag: ${{ needs.Prerelease.outputs.release_tag }}
+      release_prerelease: true
+    permissions:
+      contents: write
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
 
-    PublishPrerelease:
-      if: github.repository == 'IdkWhatAmIDoin/worstfish' && needs.Prerelease.outputs.release_tag != ''
-      needs: [ Prerelease, DevBinaries, DevARMBinaries ]
-      runs-on: ubuntu-slim
-      permissions:
-        contents: write
-      steps:
-        - name: Publish Draft Prerelease
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          run: gh release edit "${{ needs.Prerelease.outputs.release_tag }}" --repo "${{ github.repository }}" --draft=false --prerelease
+  PublishPrerelease:
+    if: github.repository == 'IdkWhatAmIDoin/worstfish' && needs.Prerelease.outputs.release_tag != ''
+    needs: [Prerelease, DevBinaries, DevARMBinaries]
+    runs-on: ubuntu-slim
+    permissions:
+      contents: write
+    steps:
+      - name: Publish Draft Prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ needs.Prerelease.outputs.release_tag }}" --repo "${{ github.repository }}" --draft=false --prerelease

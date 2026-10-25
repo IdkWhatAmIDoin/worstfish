@@ -100,32 +100,12 @@ struct MoveSorter {
 void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
     ExtMove *sortedEnd = begin, *p = begin + 1;
 
-#ifdef USE_AVX512
-    if (begin == end)
-        return;
-
-    MoveSorter sorter(*begin);
-    for (; p < end; ++p)
-    {
-        if (p->value >= limit)
-        {
-            if (sortedEnd - begin + 1 >= MoveSorter::MAX_ELEMENTS)  // sorter full
-                break;
-
-            sorter.insert(*p);
-            *p = *++sortedEnd;
-        }
-    }
-    sorter.write_sorted(begin, sortedEnd - begin + 1);
-    // Use scalar implementation for any remaining elements
-#endif
-
     for (; p < end; ++p)
         if (p->value >= limit)
         {
             ExtMove tmp = *p, *q;
             *p          = *++sortedEnd;
-            for (q = sortedEnd; q != begin && *(q - 1) < tmp; --q)
+            for (q = sortedEnd; q != begin && *(q - 1) > tmp; --q) // I can lose anything!
                 *q = *(q - 1);
             *q = tmp;
         }

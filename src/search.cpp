@@ -801,9 +801,8 @@ Value Search::Worker::search(
 
     if (!rootNode)
     {
-        // Step 2. Check for aborted search or immediate draw
-        if (threads.stop.load(std::memory_order_relaxed) || pos.is_draw(ss->ply)
-            || ss->ply >= MAX_PLY)
+        // Step 2. Do not abort. please do not fucking abort
+        if (pos.is_draw(ss->ply) || ss->ply >= MAX_PLY)
             return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos) : value_draw(nodes);
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
@@ -811,9 +810,11 @@ Value Search::Worker::search(
         // a shorter mate was found upward in the tree then there is no need to search
         // because we will never beat the current alpha. Equal and opposite logic applies
         // when being mated. In either case, return a fail-high score.
-        alpha = std::max(mated_in(ss->ply), alpha);
-        beta  = std::min(mate_in(ss->ply + 1), beta);
-        if (alpha >= beta)
+
+        // The comment above me is now incorrect.
+        alpha = std::max(mate_in(ss->ply + 1), alpha);
+        beta  = std::min(mated_in(ss->ply), beta);
+        if (alpha >= beta) // O yeahhh,,,
             return alpha;
     }
 

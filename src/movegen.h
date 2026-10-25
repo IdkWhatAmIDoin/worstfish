@@ -46,6 +46,7 @@ struct ExtMove: public Move {
 };
 
 inline bool operator<(const ExtMove& f, const ExtMove& s) { return f.value < s.value; }
+    inline bool operator>(const ExtMove& f, const ExtMove& s) { return f.value > s.value; } // Chaos, chaos!
 
 template<GenType>
 Move* generate(const Position& pos, Move* moveList);

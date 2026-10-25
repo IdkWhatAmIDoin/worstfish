@@ -1,14 +1,11 @@
-name: Stockfish
+name: Worstfish
 on:
   push:
     branches:
       - master
-      - tools
-      - github_ci
   pull_request:
     branches:
       - master
-      - tools
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -22,14 +19,13 @@ jobs:
     outputs:
       release_tag: ${{ steps.prerelease_metadata.outputs.release_tag }}
     permissions:
-      contents: write # For managing the dev prerelease
+      contents: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           fetch-depth: 0
 
-      # Make sure that an old ci that still runs on master doesn't recreate a prerelease
       - name: Check Pullable Commits
         id: check_commits
         run: |
@@ -39,7 +35,6 @@ jobs:
 
       - name: Official Release?
         id: official_release
-        # Check for "Official release version of Stockfish" in the commit message
         run: |
           if git log -1 --pretty=%B | grep -q "Official release version of Stockfish"; then
             echo "OFFICIAL_RELEASE=true" >> $GITHUB_ENV
@@ -65,7 +60,7 @@ jobs:
         id: recent_commits
         run: |
           COMMITS=$(git log \
-            --format="- [\`%h\`](https://github.com/${{ github.repository }}/commit/%H) *%s*" \
+            --format="- \`%h\` *%s*" \
             ${{ github.event.before }}..HEAD)
           echo "COMMITS<<EOF" >> $GITHUB_OUTPUT
           echo "$COMMITS" >> $GITHUB_OUTPUT
@@ -109,7 +104,8 @@ jobs:
 
             ${{ steps.recent_commits.outputs.COMMITS }}
 
-            [View all commits →](https://github.com/${{ github.repository }}/commits/master)
+            View all commits →
+
   Matrix:
     name: Prepare matrices
     runs-on: ubuntu-slim
@@ -128,46 +124,55 @@ jobs:
         run: |
           UNIVERSAL_MATRIX=$(jq -c '.' .github/ci/universal_matrix.json)
           echo "UNIVERSAL_MATRIX=$UNIVERSAL_MATRIX" >> $GITHUB_OUTPUT
-  # Testing Jobs
-  IWYU:
-    name: IWYU
-    uses: ./.github/workflows/iwyu.yml
-  Sanitizers:
-    name: Sanitizers
-    if: ${{ always() }}
-    uses: ./.github/workflows/sanitizers.yml
-  Tests:
-    name: Tests
-    if: ${{ always() }}
-    uses: ./.github/workflows/tests.yml
-  Matetrack:
-    name: Matetrack
-    if: ${{ always() }}
-    uses: ./.github/workflows/matetrack.yml
-  Games:
-    name: Games
-    if: ${{ always() }}
-    uses: ./.github/workflows/games.yml
-  CompilerCheck:
-    name: Compiler check
-    if: ${{ always() }}
-    uses: ./.github/workflows/avx2_compilers.yml
-  MSVC:
-    name: MSVC
-    if: ${{ always() }}
-    uses: ./.github/workflows/msvc.yml
-  WASMCompilation:
-    name: WASM compilation
-    if: ${{ always() }}
-    uses: ./.github/workflows/wasm_compilation.yml
-  # Release Jobs
+
   ARMCompilation:
     name: Android builds
-    needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
+    needs: [Matrix]
     uses: ./.github/workflows/arm_compilation.yml
     with:
       matrix: ${{ needs.Matrix.outputs.arm_matrix }}
+
   UniversalCompilation:
     name: "Universal builds"
-    needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
+    needs: [Matrix]
     uses: ./.github/workflows/universal_compilation.yml
+
+    DevBinaries:
+      if: github.repository == 'IdkWhatAmIDoin/worstfish'
+      name: Universal uploads
+      needs: [ Prerelease, Matrix, UniversalCompilation ]
+      uses: ./.github/workflows/upload_binaries.yml
+      with:
+        matrix: ${{ needs.Matrix.outputs.universal_matrix }}
+        release_tag: ${{ needs.Prerelease.outputs.release_tag }}
+        release_prerelease: true
+      permissions:
+        contents: write # For uploading release assets
+      secrets:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    DevARMBinaries:
+      if: github.repository == 'IdkWhatAmIDoin/worstfish'
+      name: Android uploads
+      needs: [ Prerelease, Matrix, ARMCompilation ]
+      uses: ./.github/workflows/upload_binaries.yml
+      with:
+        matrix: ${{ needs.Matrix.outputs.arm_matrix }}
+        release_tag: ${{ needs.Prerelease.outputs.release_tag }}
+        release_prerelease: true
+      permissions:
+        contents: write
+      secrets:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    PublishPrerelease:
+      if: github.repository == 'IdkWhatAmIDoin/worstfish' && needs.Prerelease.outputs.release_tag != ''
+      needs: [ Prerelease, DevBinaries, DevARMBinaries ]
+      runs-on: ubuntu-slim
+      permissions:
+        contents: write
+      steps:
+        - name: Publish Draft Prerelease
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          run: gh release edit "${{ needs.Prerelease.outputs.release_tag }}" --repo "${{ github.repository }}" --draft=false --prerelease

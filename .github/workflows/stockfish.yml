@@ -16,9 +16,9 @@ concurrency:
 
 jobs:
   Prerelease:
-    if: github.repository == 'official-stockfish/Stockfish' && github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.repository == 'IdkWhatAmIDoin/worstfish' && github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-slim
-    needs: [Matrix, ARMCompilation, UniversalCompilation]
+    needs: [Matrix]
     outputs:
       release_tag: ${{ steps.prerelease_metadata.outputs.release_tag }}
     permissions:
@@ -97,7 +97,7 @@ jobs:
             Precompiled binaries of the latest Stockfish development version, built automatically on every commit.
 
             > [!NOTE]
-            > For stable, thoroughly tested builds use the [official releases](https://github.com/official-stockfish/Stockfish/releases).
+            > For stable, thoroughly tested builds use the [official releases](https://github.com/IdkWhatAmIDoin/worstfish/releases).
             > Pre-releases may contain bugs.
 
             *Some platforms ship a **universal binary** that automatically selects the best
@@ -171,40 +171,3 @@ jobs:
     name: "Universal builds"
     needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
     uses: ./.github/workflows/universal_compilation.yml
-  DevBinaries:
-    if: github.repository == 'official-stockfish/Stockfish'
-    name: Universal uploads
-    needs: [Prerelease, Matrix, UniversalCompilation]
-    uses: ./.github/workflows/upload_binaries.yml
-    with:
-      matrix: ${{ needs.Matrix.outputs.universal_matrix }}
-      release_tag: ${{ needs.Prerelease.outputs.release_tag }}
-      release_prerelease: true
-    permissions:
-      contents: write # For uploading release assets
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
-  DevARMBinaries:
-    if: github.repository == 'official-stockfish/Stockfish'
-    name: Android uploads
-    needs: [Prerelease, Matrix, ARMCompilation]
-    uses: ./.github/workflows/upload_binaries.yml
-    with:
-      matrix: ${{ needs.Matrix.outputs.arm_matrix }}
-      release_tag: ${{ needs.Prerelease.outputs.release_tag }}
-      release_prerelease: true
-    permissions:
-      contents: write # For uploading release assets
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
-  PublishPrerelease:
-    if: github.repository == 'official-stockfish/Stockfish' && needs.Prerelease.outputs.release_tag != ''
-    needs: [Prerelease, DevBinaries, DevARMBinaries]
-    runs-on: ubuntu-slim
-    permissions:
-      contents: write # For publishing the draft prerelease
-    steps:
-      - name: Publish Draft Prerelease
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ needs.Prerelease.outputs.release_tag }}" --repo "${{ github.repository }}" --draft=false --prerelease
